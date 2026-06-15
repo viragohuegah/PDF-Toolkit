@@ -1,0 +1,201 @@
+<!-- PDF to Text Page -->
+<div class="feature-page">
+    <div class="page-header">
+        <h2>PDF to Text</h2>
+        <p>Extract text content from PDF files</p>
+    </div>
+
+    <div class="page-content">
+        <div class="two-column">
+            <!-- Upload Area -->
+            <div class="upload-section">
+                <div class="upload-area" id="pdfToTextUploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Upload PDF</h3>
+                    <p>or click to select file</p>
+                </div>
+                <input type="file" id="pdfToTextFile" accept=".pdf" style="display: none;">
+            </div>
+
+            <!-- Preview -->
+            <div class="settings-section">
+                <h3>PDF Info</h3>
+                
+                <div class="preview-section" id="pdfToTextPreview" style="display: none;">
+                    <img id="pdfToTextPreviewImg" src="" alt="PDF Preview">
+                    <div class="file-info">
+                        <p id="pdfToTextFileName"></p>
+                        <p id="pdfToTextFileSize"></p>
+                    </div>
+                    <button class="btn btn-primary btn-large" id="pdfToTextBtn">
+                        <i class="fas fa-file-alt"></i> Extract Text
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress -->
+        <div id="pdfToTextProgress" class="progress-section" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="pdfToTextProgressFill"></div>
+            </div>
+            <p id="pdfToTextProgressText">Extracting text...</p>
+        </div>
+
+        <!-- Result -->
+        <div id="pdfToTextResult" class="result-section" style="display: none;">
+            <div class="result-card success">
+                <i class="fas fa-check-circle"></i>
+                <h3>Text Extraction Successful!</h3>
+                <div class="result-stats">
+                    <div class="stat">
+                        <span>Characters:</span>
+                        <strong id="pdfToTextLength"></strong>
+                    </div>
+                </div>
+                <div class="result-actions">
+                    <button class="btn btn-primary" id="pdfToTextDownloadBtn">
+                        <i class="fas fa-download"></i> Download TXT
+                    </button>
+                    <button class="btn btn-secondary" onclick="location.reload()">
+                        <i class="fas fa-redo"></i> Extract More
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    if (document.querySelector('#pdfToTextFile')) {
+        const uploadArea = document.getElementById('pdfToTextUploadArea');
+        const fileInput = document.getElementById('pdfToTextFile');
+        const extractBtn = document.getElementById('pdfToTextBtn');
+        let selectedFile = null;
+        let fileId = null;
+
+        uploadArea.addEventListener('click', (e) => {
+            if (!e.target.closest('.preview-section')) {
+                fileInput.click();
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                    selectedFile = file;
+                    showPreview(selectedFile);
+                } else {
+                    showToast('Please select a PDF file', 'error');
+                    fileInput.value = '';
+                }
+            }
+        });
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        uploadArea.addEventListener('dragover', (e) => {
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            if (e.target === uploadArea) {
+                uploadArea.classList.remove('dragover');
+            }
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                    selectedFile = file;
+                    showPreview(selectedFile);
+                } else {
+                    showToast('Please drop a PDF file', 'error');
+                }
+            }
+        });
+
+        async function showPreview(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/preview/thumbnail', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.status === 'success') {
+                    document.getElementById('pdfToTextPreviewImg').src = data.thumbnail;
+                    document.getElementById('pdfToTextFileName').textContent = file.name;
+                    document.getElementById('pdfToTextFileSize').textContent = 
+                        'Size: ' + (file.size / 1024 / 1024).toFixed(2) + ' MB';
+                    document.getElementById('pdfToTextPreview').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading preview:', error);
+            }
+        }
+
+        extractBtn.addEventListener('click', extractText);
+
+        async function extractText() {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            document.getElementById('pdfToTextProgress').style.display = 'block';
+            extractBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/convert/pdf-to-text', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    fileId = data.file_id;
+                    showResult(data);
+                    saveToHistory('PDF to Text', selectedFile.name, 'text_' + fileId + '.txt');
+                } else {
+                    showToast('Extraction failed: ' + data.detail, 'error');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                document.getElementById('pdfToTextProgress').style.display = 'none';
+                extractBtn.disabled = false;
+            }
+        }
+
+        function showResult(data) {
+            document.getElementById('pdfToTextLength').textContent = 
+                data.text_length + ' characters';
+            
+            document.getElementById('pdfToTextDownloadBtn').onclick = () => {
+                window.location.href = '/api/convert/download-text/' + fileId;
+            };
+
+            document.getElementById('pdfToTextResult').style.display = 'block';
+            document.getElementById('pdfToTextProgress').style.display = 'none';
+            document.getElementById('pdfToTextPreview').style.display = 'none';
+        }
+    }
+})();
+</script>

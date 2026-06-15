@@ -1,0 +1,231 @@
+<!-- Compress PDF Page -->
+<div class="feature-page">
+    <div class="page-header">
+        <h2>Compress PDF</h2>
+        <p>Reduce file size while maintaining quality</p>
+    </div>
+
+    <div class="page-content">
+        <div class="two-column">
+            <!-- Upload Area -->
+            <div class="upload-section">
+                <div class="upload-area" id="compressUploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Drag & Drop your PDF</h3>
+                    <p>or click to select file</p>
+                    <p class="text-small">Max file size: 50 MB</p>
+                </div>
+                <input type="file" id="compressFile" accept=".pdf" style="display: none;">
+            </div>
+
+            <!-- Settings -->
+            <div class="settings-section">
+                <h3>Compression Settings</h3>
+                
+                <div class="form-group">
+                    <label>Quality Level</label>
+                    <select id="compressQuality">
+                        <option value="screen">Screen (Lowest - Best compression)</option>
+                        <option value="ebook" selected>eBook (Balanced)</option>
+                        <option value="printer">Printer (High quality)</option>
+                        <option value="prepress">Prepress (Highest quality)</option>
+                    </select>
+                </div>
+
+                <div class="preview-section" id="compressPreview" style="display: none;">
+                    <img id="compressPreviewImg" src="" alt="PDF Preview">
+                    <div class="file-info">
+                        <p id="compressFileName"></p>
+                        <p id="compressFileSize"></p>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary btn-large" id="compressBtn" style="display: none;">
+                    <i class="fas fa-compress"></i> Compress PDF
+                </button>
+            </div>
+        </div>
+
+        <!-- Progress -->
+        <div id="compressProgress" class="progress-section" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="compressProgressFill"></div>
+            </div>
+            <p id="compressProgressText">Compressing...</p>
+        </div>
+
+        <!-- Result -->
+        <div id="compressResult" class="result-section" style="display: none;">
+            <div class="result-card success">
+                <i class="fas fa-check-circle"></i>
+                <h3>Compression Successful!</h3>
+                <div class="result-stats">
+                    <div class="stat">
+                        <span>Original Size:</span>
+                        <strong id="compressOriginalSize"></strong>
+                    </div>
+                    <div class="stat">
+                        <span>Compressed Size:</span>
+                        <strong id="compressCompressedSize"></strong>
+                    </div>
+                    <div class="stat">
+                        <span>Reduction:</span>
+                        <strong id="compressReduction"></strong>
+                    </div>
+                </div>
+                <div class="result-actions">
+                    <button class="btn btn-primary" id="compressDownloadBtn">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                    <button class="btn btn-secondary" onclick="location.reload()">
+                        <i class="fas fa-redo"></i> Compress Another
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    if (document.querySelector('#compressFile')) {
+        const uploadArea = document.getElementById('compressUploadArea');
+        const fileInput = document.getElementById('compressFile');
+        const compressBtn = document.getElementById('compressBtn');
+        const qualitySelect = document.getElementById('compressQuality');
+        let selectedFile = null;
+        let fileId = null;
+
+        // File selection via click
+        uploadArea.addEventListener('click', (e) => {
+            if (!e.target.closest('.preview-section')) {
+                fileInput.click();
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                selectedFile = e.target.files[0];
+                if (selectedFile.type === 'application/pdf' || selectedFile.name.endsWith('.pdf')) {
+                    showPreview(selectedFile);
+                } else {
+                    showToast('Please select a PDF file', 'error');
+                    fileInput.value = '';
+                }
+            }
+        });
+
+        // Drag and drop events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        uploadArea.addEventListener('dragover', (e) => {
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            if (e.target === uploadArea) {
+                uploadArea.classList.remove('dragover');
+            }
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                    selectedFile = file;
+                    showPreview(selectedFile);
+                } else {
+                    showToast('Please drop a PDF file', 'error');
+                }
+            }
+        });
+
+        compressBtn.addEventListener('click', compressPDF);
+
+        async function showPreview(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/preview/thumbnail', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.status === 'success') {
+                    document.getElementById('compressPreviewImg').src = data.thumbnail;
+                    document.getElementById('compressFileName').textContent = file.name;
+                    document.getElementById('compressFileSize').textContent = 
+                        'Size: ' + (file.size / 1024 / 1024).toFixed(2) + ' MB';
+                    document.getElementById('compressPreview').style.display = 'block';
+                    compressBtn.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading preview:', error);
+                showToast('Could not load preview', 'error');
+            }
+        }
+
+        async function compressPDF() {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('quality', qualitySelect.value);
+
+            document.getElementById('compressProgress').style.display = 'block';
+            compressBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/compress/compress-pdf', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    fileId = data.file_id;
+                    showResult(data);
+                    saveToHistory('Compress', data.filename, 'compressed_' + fileId + '.pdf');
+                } else {
+                    showToast('Compression failed: ' + data.detail, 'error');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                document.getElementById('compressProgress').style.display = 'none';
+                compressBtn.disabled = false;
+            }
+        }
+
+        function showResult(data) {
+            document.getElementById('compressOriginalSize').textContent = 
+                (data.original_size / 1024 / 1024).toFixed(2) + ' MB';
+            document.getElementById('compressCompressedSize').textContent = 
+                (data.compressed_size / 1024 / 1024).toFixed(2) + ' MB';
+            document.getElementById('compressReduction').textContent = 
+                data.reduction + '%';
+            
+            document.getElementById('compressDownloadBtn').onclick = () => {
+                window.location.href = '/api/compress/download/' + fileId;
+            };
+
+            document.getElementById('compressResult').style.display = 'block';
+            document.getElementById('compressProgress').style.display = 'none';
+            document.getElementById('compressPreview').style.display = 'none';
+            compressBtn.style.display = 'none';
+        }
+    }
+})();
+</script>

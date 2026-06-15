@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Toolkit - Complete PDF Processing Suite</title>
+    <link rel="stylesheet" href="/frontend/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container-wrapper">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-file-pdf"></i>
+                    <span>PDF Toolkit</span>
+                </div>
+                <button class="sidebar-toggle" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="#" onclick="navigateTo('dashboard')" class="nav-link active">
+                        <i class="fas fa-home"></i>
+                        <span>Dashboard</span>
+                    </a></li>
+                    
+                    <li class="nav-divider"><span>PDF Operations</span></li>
+                    
+                    <li><a href="#" onclick="navigateTo('compress')" class="nav-link">
+                        <i class="fas fa-compress"></i>
+                        <span>Compress</span>
+                    </a></li>
+                    
+                    <li><a href="#" onclick="navigateTo('merge')" class="nav-link">
+                        <i class="fas fa-object-group"></i>
+                        <span>Merge</span>
+                    </a></li>
+                    
+                    <li><a href="#" onclick="navigateTo('split')" class="nav-link">
+                        <i class="fas fa-cut"></i>
+                        <span>Split</span>
+                    </a></li>
+
+                    <li class="nav-divider"><span>Conversion</span></li>
+                    
+                    <li><a href="#" onclick="navigateTo('pdf-to-image')" class="nav-link">
+                        <i class="fas fa-image"></i>
+                        <span>PDF to Image</span>
+                    </a></li>
+                    
+                    <li><a href="#" onclick="navigateTo('image-to-pdf')" class="nav-link">
+                        <i class="fas fa-file-pdf"></i>
+                        <span>Image to PDF</span>
+                    </a></li>
+                    
+                    <li><a href="#" onclick="navigateTo('pdf-to-text')" class="nav-link">
+                        <i class="fas fa-file-alt"></i>
+                        <span>PDF to Text</span>
+                    </a></li>
+
+                    <li><a href="#" onclick="navigateTo('pdf-to-word')" class="nav-link">
+                        <i class="fas fa-file-word"></i>
+                        <span>PDF to Word</span>
+                    </a></li>
+
+                    <li class="nav-divider"><span>Security</span></li>
+                    
+                    <li><a href="#" onclick="navigateTo('protect')" class="nav-link">
+                        <i class="fas fa-lock"></i>
+                        <span>Protect PDF</span>
+                    </a></li>
+                    
+                    <!-- <li><a href="#" onclick="navigateTo('unlock')" class="nav-link">
+                        <i class="fas fa-unlock"></i>
+                        <span>Unlock PDF</span>
+                    </a></li> -->
+                    
+                    <li><a href="#" onclick="navigateTo('restrict')" class="nav-link">
+                        <i class="fas fa-ban"></i>
+                        <span>Restrict</span>
+                    </a></li>
+
+                    <li class="nav-divider"><span>Tools</span></li>
+                    
+                    <li><a href="#" onclick="navigateTo('watermark')" class="nav-link">
+                        <i class="fas fa-water"></i>
+                        <span>Watermark</span>
+                    </a></li>
+                    
+                    <li><a href="#" onclick="navigateTo('history')" class="nav-link">
+                        <i class="fas fa-history"></i>
+                        <span>History</span>
+                    </a></li>
+                </ul>
+            </nav>
+
+            <!-- <div class="sidebar-footer">
+                <div class="theme-toggle">
+                    <button id="themeToggle" class="theme-btn">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </div> -->
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <h1 id="pageTitle">Dashboard</h1>
+                </div>
+
+                <div class="header-right">
+                <div class="theme-toggle">
+                    <button id="themeToggle" class="theme-btn">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </div>
+                <!-- <div class="header-right">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Search...">
+                    </div>
+                    <button class="header-btn">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge">3</span>
+                    </button>
+                    <button class="header-btn">
+                        <i class="fas fa-user-circle"></i>
+                    </button>
+                </div> -->
+            </header>
+
+            <!-- Page Content -->
+            <div class="content">
+                <!-- Dashboard Page -->
+                <div id="dashboard" class="page active">
+                    <div class="dashboard-grid">
+                        <div class="feature-card">
+                            <div class="feature-icon compress">
+                                <i class="fas fa-compress"></i>
+                            </div>
+                            <h3>Compress PDF</h3>
+                            <p>Reduce file size while maintaining quality</p>
+                            <button onclick="navigateTo('compress')" class="btn btn-primary">Start</button>
+                        </div>
+
+                        <div class="feature-card">
+                            <div class="feature-icon merge">
+                                <i class="fas fa-object-group"></i>
+                            </div>
+                            <h3>Merge PDFs</h3>
+                            <p>Combine multiple PDFs into one file</p>
+                            <button onclick="navigateTo('merge')" class="btn btn-primary">Start</button>
+                        </div>
+
+                        <div class="feature-card">
+                            <div class="feature-icon split">
+                                <i class="fas fa-cut"></i>
+                            </div>
+                            <h3>Split PDF</h3>
+                            <p>Extract specific pages from PDF</p>
+                            <button onclick="navigateTo('split')" class="btn btn-primary">Start</button>
+                        </div>
+
+                        <div class="feature-card">
+                            <div class="feature-icon convert">
+                                <i class="fas fa-exchange-alt"></i>
+                            </div>
+                            <h3>PDF to Image</h3>
+                            <p>Convert PDF pages to PNG/JPG</p>
+                            <button onclick="navigateTo('pdf-to-image')" class="btn btn-primary">Start</button>
+                        </div>
+
+                        <div class="feature-card">
+                            <div class="feature-icon convert">
+                                <i class="fas fa-file-pdf"></i>
+                            </div>
+                            <h3>Image to PDF</h3>
+                            <p>Convert images to single PDF</p>
+                            <button onclick="navigateTo('image-to-pdf')" class="btn btn-primary">Start</button>
+                        </div>
+
+                        <div class="feature-card">
+                            <div class="feature-icon convert">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <h3>PDF to Text</h3>
+                            <p>Extract text from PDF files</p>
+                            <button onclick="navigateTo('pdf-to-text')" class="btn btn-primary">Start</button>
+                        </div>
+
+                        <div class="feature-card">
+                            <div class="feature-icon convert">
+                                <i class="fas fa-file-word"></i>
+                            </div>
+                            <h3>PDF to Word</h3>
+                            <p>Convert PDF text into editable DOCX</p>
+                            <button onclick="navigateTo('pdf-to-word')" class="btn btn-primary">Start</button>
+                        </div>
+
+                        <div class="feature-card">
+                            <div class="feature-icon security">
+                                <i class="fas fa-lock"></i>
+                            </div>
+                            <h3>Protect PDF</h3>
+                            <p>Add password protection to PDF</p>
+                            <button onclick="navigateTo('protect')" class="btn btn-primary">Start</button>
+                        </div>
+
+                        <!-- <div class="feature-card">
+                            <div class="feature-icon security">
+                                <i class="fas fa-unlock"></i>
+                            </div>
+                            <h3>Unlock PDF</h3>
+                            <p>Remove password protection</p>
+                            <button onclick="navigateTo('unlock')" class="btn btn-primary">Start</button>
+                        </div> -->
+
+                        <div class="feature-card">
+                            <div class="feature-icon security">
+                                <i class="fas fa-ban"></i>
+                            </div>
+                            <h3>Restrict PDF</h3>
+                            <p>Disable print, copy, or edit permissions</p>
+                            <button onclick="navigateTo('restrict')" class="btn btn-primary">Start</button>
+                        </div>
+
+                        <div class="feature-card">
+                            <div class="feature-icon watermark">
+                                <i class="fas fa-water"></i>
+                            </div>
+                            <h3>Add Watermark</h3>
+                            <p>Add text watermark to PDF pages</p>
+                            <button onclick="navigateTo('watermark')" class="btn btn-primary">Start</button>
+                        </div>
+                    </div>
+
+                    <div class="stats-section">
+                        <h2>Quick Stats</h2>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-number">0</div>
+                                <div class="stat-label">Files Processed</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">0 MB</div>
+                                <div class="stat-label">Total Processed</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number">0</div>
+                                <div class="stat-label">Today</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Content will be loaded here -->
+                <div id="content-area"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Modal -->
+    <div id="modal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script src="/frontend/js/app.js"></script>
+    <script src="/frontend/js/history.js"></script>
+</body>
+</html>

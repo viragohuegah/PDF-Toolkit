@@ -1,0 +1,259 @@
+<!-- Split PDF Page -->
+<div class="feature-page">
+    <div class="page-header">
+        <h2>Split PDF</h2>
+        <p>Extract specific pages from your PDF</p>
+    </div>
+
+    <div class="page-content">
+        <div class="two-column">
+            <!-- Upload Area -->
+            <div class="upload-section">
+                <div class="upload-area" id="splitUploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Upload PDF</h3>
+                    <p>or click to select file</p>
+                </div>
+                <input type="file" id="splitFile" accept=".pdf" style="display: none;">
+            </div>
+
+            <!-- Settings -->
+            <div class="settings-section">
+                <h3>Page Range</h3>
+                
+                <div class="preview-section" id="splitPreview" style="display: none;">
+                    <img id="splitPreviewImg" src="" alt="PDF Preview">
+                    <div class="file-info">
+                        <p id="splitFileName"></p>
+                        <p id="splitTotalPages"></p>
+                    </div>
+                </div>
+
+                <div id="splitSettings" style="display: none;">
+                    <div class="form-group">
+                        <label>Start Page</label>
+                        <input type="number" id="splitStartPage" min="1" value="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label>End Page</label>
+                        <input type="number" id="splitEndPage" min="1" value="1">
+                    </div>
+
+                    <button class="btn btn-primary btn-large" id="splitBtn">
+                        <i class="fas fa-cut"></i> Split PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress -->
+        <div id="splitProgress" class="progress-section" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="splitProgressFill"></div>
+            </div>
+            <p id="splitProgressText">Splitting PDF...</p>
+        </div>
+
+        <!-- Result -->
+        <div id="splitResult" class="result-section" style="display: none;">
+            <div class="result-card success">
+                <i class="fas fa-check-circle"></i>
+                <h3>PDF Split Successfully!</h3>
+                <div class="result-stats">
+                    <div class="stat">
+                        <span>Pages Extracted:</span>
+                        <strong id="splitExtractedPages"></strong>
+                    </div>
+                    <div class="stat">
+                        <span>File Size:</span>
+                        <strong id="splitResultSize"></strong>
+                    </div>
+                </div>
+                <div class="result-actions">
+                    <button class="btn btn-primary" id="splitDownloadBtn">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                    <button class="btn btn-secondary" onclick="location.reload()">
+                        <i class="fas fa-redo"></i> Split Another
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    if (document.querySelector('#splitFile')) {
+        const uploadArea = document.getElementById('splitUploadArea');
+        const fileInput = document.getElementById('splitFile');
+        const splitBtn = document.getElementById('splitBtn');
+        const startPageInput = document.getElementById('splitStartPage');
+        const endPageInput = document.getElementById('splitEndPage');
+        let selectedFile = null;
+        let totalPages = 0;
+        let fileId = null;
+
+        // File selection via click
+        uploadArea.addEventListener('click', (e) => {
+            if (!e.target.closest('.preview-section')) {
+                fileInput.click();
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                    selectedFile = file;
+                    getPageCount(selectedFile);
+                } else {
+                    showToast('Please select a PDF file', 'error');
+                    fileInput.value = '';
+                }
+            }
+        });
+
+        // Drag and drop events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        uploadArea.addEventListener('dragover', (e) => {
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            if (e.target === uploadArea) {
+                uploadArea.classList.remove('dragover');
+            }
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                    selectedFile = file;
+                    getPageCount(selectedFile);
+                } else {
+                    showToast('Please drop a PDF file', 'error');
+                }
+            }
+        });
+
+        async function getPageCount(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/split/get-pages', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                totalPages = data.pages;
+                endPageInput.max = totalPages;
+                endPageInput.value = totalPages;
+
+                showPreview(file);
+            } catch (error) {
+                showToast('Error reading PDF: ' + error.message, 'error');
+            }
+        }
+
+        async function showPreview(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/preview/thumbnail', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.status === 'success') {
+                    document.getElementById('splitPreviewImg').src = data.thumbnail;
+                    document.getElementById('splitFileName').textContent = file.name;
+                    document.getElementById('splitTotalPages').textContent = 
+                        'Total Pages: ' + totalPages;
+                    document.getElementById('splitPreview').style.display = 'block';
+                    document.getElementById('splitSettings').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading preview:', error);
+                showToast('Could not load preview', 'error');
+            }
+        }
+
+        splitBtn.addEventListener('click', splitPDF);
+
+        async function splitPDF() {
+            if (!selectedFile) return;
+
+            const startPage = parseInt(startPageInput.value);
+            const endPage = parseInt(endPageInput.value);
+
+            if (startPage < 1 || endPage > totalPages || startPage > endPage) {
+                showToast('Invalid page range', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('start_page', startPage);
+            formData.append('end_page', endPage);
+
+            document.getElementById('splitProgress').style.display = 'block';
+            splitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/split/split-pdf', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    fileId = data.file_id;
+                    showResult(data);
+                    saveToHistory('Split', selectedFile.name, 'split_' + fileId + '.pdf');
+                } else {
+                    showToast('Split failed: ' + data.detail, 'error');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                document.getElementById('splitProgress').style.display = 'none';
+                splitBtn.disabled = false;
+            }
+        }
+
+        function showResult(data) {
+            document.getElementById('splitExtractedPages').textContent = 
+                data.extracted_pages + ' pages';
+            document.getElementById('splitResultSize').textContent = 
+                (data.output_size / 1024 / 1024).toFixed(2) + ' MB';
+            
+            document.getElementById('splitDownloadBtn').onclick = () => {
+                window.location.href = '/api/split/download/' + fileId;
+            };
+
+            document.getElementById('splitResult').style.display = 'block';
+            document.getElementById('splitProgress').style.display = 'none';
+            document.getElementById('splitSettings').style.display = 'none';
+            document.getElementById('splitPreview').style.display = 'none';
+        }
+    }
+})();
+</script>

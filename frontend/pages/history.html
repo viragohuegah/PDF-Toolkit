@@ -1,0 +1,87 @@
+<!-- History Page -->
+<div class="feature-page">
+    <div class="page-header">
+        <h2>Download History</h2>
+        <p>View and manage your processed files</p>
+        <button class="btn btn-danger" id="clearHistoryBtn" onclick="clearDownloadHistory()">
+            <i class="fas fa-trash"></i> Clear History
+        </button>
+    </div>
+
+    <div class="page-content">
+        <div id="historyTable" class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Operation</th>
+                        <th>Original File</th>
+                        <th>Output File</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <div id="emptyHistory" class="empty-state" style="display: none;">
+            <i class="fas fa-history"></i>
+            <h3>No History</h3>
+            <p>Your processing history will appear here</p>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    if (document.querySelector('#historyTable')) {
+        displayDownloadHistory();
+    }
+});
+
+function displayDownloadHistory() {
+    const history = getDownloadHistory();
+    const tableBody = document.getElementById('historyTableBody');
+    const emptyHistory = document.getElementById('emptyHistory');
+
+    if (history.length === 0) {
+        document.getElementById('historyTable').style.display = 'none';
+        emptyHistory.style.display = 'block';
+        return;
+    }
+
+    tableBody.innerHTML = '';
+    history.forEach((item, index) => {
+        const row = document.createElement('tr');
+        const date = new Date(item.timestamp).toLocaleString();
+        
+        row.innerHTML = `
+            <td><span class="badge">${item.operation}</span></td>
+            <td>${item.originalFile}</td>
+            <td>${item.outputFile}</td>
+            <td>${date}</td>
+            <td>
+                <button class="btn btn-small" onclick="downloadHistoryFile('${item.outputFile}')">
+                    <i class="fas fa-download"></i>
+                </button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+function downloadHistoryFile(filename) {
+    // This would require the backend to serve files by filename
+    // For now, just show a notification
+    showToast('Download feature would be implemented here', 'info');
+}
+
+function clearDownloadHistory() {
+    if (confirm('Are you sure you want to clear all history?')) {
+        sessionStorage.removeItem('downloadHistory');
+        displayDownloadHistory();
+        showToast('History cleared', 'success');
+    }
+}
+</script>

@@ -1,0 +1,234 @@
+<!-- Watermark PDF Page -->
+<div class="feature-page">
+    <div class="page-header">
+        <h2>Add Watermark</h2>
+        <p>Add text watermark to your PDF</p>
+    </div>
+
+    <div class="page-content">
+        <div class="two-column">
+            <!-- Upload Area -->
+            <div class="upload-section">
+                <div class="upload-area" id="watermarkUploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Upload PDF</h3>
+                    <p>or click to select file</p>
+                </div>
+                <input type="file" id="watermarkFile" accept=".pdf" style="display: none;">
+            </div>
+
+            <!-- Settings -->
+            <div class="settings-section">
+                <h3>Watermark Settings</h3>
+                
+                <div class="preview-section" id="watermarkPreview" style="display: none;">
+                    <img id="watermarkPreviewImg" src="" alt="PDF Preview">
+                    <div class="file-info">
+                        <p id="watermarkFileName"></p>
+                    </div>
+                </div>
+
+                <div id="watermarkSettings" style="display: none;">
+                    <div class="form-group">
+                        <label>Watermark Text</label>
+                        <input type="text" id="watermarkText" placeholder="Enter watermark text" value="WATERMARK">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Color</label>
+                        <select id="watermarkColor">
+                            <option value="red" selected>Red</option>
+                            <option value="gray">Gray</option>
+                            <option value="black">Black</option>
+                            <option value="blue">Blue</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Opacity</label>
+                        <div class="range-input">
+                            <input type="range" id="watermarkOpacity" min="0" max="100" value="30">
+                            <span id="opacityValue">30%</span>
+                        </div>
+                    </div>
+
+                    <p class="text-info">
+                        <i class="fas fa-info-circle"></i>
+                        Watermark will be placed in the center of every page.
+                    </p>
+
+                    <button class="btn btn-primary btn-large" id="watermarkBtn">
+                        <i class="fas fa-water"></i> Add Watermark
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress -->
+        <div id="watermarkProgress" class="progress-section" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="watermarkProgressFill"></div>
+            </div>
+            <p>Adding watermark...</p>
+        </div>
+
+        <!-- Result -->
+        <div id="watermarkResult" class="result-section" style="display: none;">
+            <div class="result-card success">
+                <i class="fas fa-check-circle"></i>
+                <h3>Watermark Added Successfully!</h3>
+                <p>Your PDF now has a watermark</p>
+                <div class="result-actions">
+                    <button class="btn btn-primary" id="watermarkDownloadBtn">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                    <button class="btn btn-secondary" onclick="location.reload()">
+                        <i class="fas fa-redo"></i> Add More
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    if (document.querySelector('#watermarkFile')) {
+        const uploadArea = document.getElementById('watermarkUploadArea');
+        const fileInput = document.getElementById('watermarkFile');
+        const watermarkBtn = document.getElementById('watermarkBtn');
+        const textInput = document.getElementById('watermarkText');
+        const opacityInput = document.getElementById('watermarkOpacity');
+        const colorInput = document.getElementById('watermarkColor');
+        const opacityValue = document.getElementById('opacityValue');
+        let selectedFile = null;
+        let fileId = null;
+
+        opacityInput.addEventListener('input', (e) => {
+            opacityValue.textContent = e.target.value + '%';
+        });
+
+        uploadArea.addEventListener('click', (e) => {
+            if (!e.target.closest('.preview-section')) {
+                fileInput.click();
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                    selectedFile = file;
+                    showPreview(selectedFile);
+                } else {
+                    showToast('Please select a PDF file', 'error');
+                    fileInput.value = '';
+                }
+            }
+        });
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        uploadArea.addEventListener('dragover', (e) => {
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            if (e.target === uploadArea) {
+                uploadArea.classList.remove('dragover');
+            }
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                    selectedFile = file;
+                    showPreview(selectedFile);
+                } else {
+                    showToast('Please drop a PDF file', 'error');
+                }
+            }
+        });
+
+        async function showPreview(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/preview/thumbnail', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.status === 'success') {
+                    document.getElementById('watermarkPreviewImg').src = data.thumbnail;
+                    document.getElementById('watermarkFileName').textContent = file.name;
+                    document.getElementById('watermarkPreview').style.display = 'block';
+                    document.getElementById('watermarkSettings').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading preview:', error);
+            }
+        }
+
+        watermarkBtn.addEventListener('click', addWatermark);
+
+        async function addWatermark() {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('text', textInput.value);
+            formData.append('opacity', opacityInput.value / 100);
+            formData.append('color', colorInput.value);
+
+            document.getElementById('watermarkProgress').style.display = 'block';
+            watermarkBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/watermark/add-watermark', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    fileId = data.file_id;
+                    showResult();
+                    saveToHistory('Watermark', selectedFile.name, 'watermarked_' + fileId + '.pdf');
+                } else {
+                    showToast('Watermarking failed: ' + data.detail, 'error');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                document.getElementById('watermarkProgress').style.display = 'none';
+                watermarkBtn.disabled = false;
+            }
+        }
+
+        function showResult() {
+            document.getElementById('watermarkDownloadBtn').onclick = () => {
+                window.location.href = '/api/watermark/download/' + fileId;
+            };
+
+            document.getElementById('watermarkResult').style.display = 'block';
+            document.getElementById('watermarkProgress').style.display = 'none';
+            document.getElementById('watermarkSettings').style.display = 'none';
+            document.getElementById('watermarkPreview').style.display = 'none';
+        }
+    }
+})();
+</script>

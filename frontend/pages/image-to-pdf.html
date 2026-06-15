@@ -1,0 +1,208 @@
+<!-- Image to PDF Page -->
+<div class="feature-page">
+    <div class="page-header">
+        <h2>Image to PDF</h2>
+        <p>Convert images to a single PDF document</p>
+    </div>
+
+    <div class="page-content">
+        <div class="merge-container">
+            <div class="upload-section">
+                <div class="upload-area" id="imageToPdfUploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Add Images</h3>
+                    <p>Drag & drop or click to select</p>
+                    <p class="text-small">PNG, JPG supported</p>
+                </div>
+                <input type="file" id="imageToPdfFiles" accept=".png,.jpg,.jpeg" multiple style="display: none;">
+            </div>
+
+            <!-- File List -->
+            <div class="file-list-section">
+                <h3>Images to Convert</h3>
+                <ul id="imageToPdfFilesList" class="file-list"></ul>
+                <p id="imageToPdfFileCount" class="text-muted">No files selected</p>
+            </div>
+
+            <button class="btn btn-primary btn-large" id="imageToPdfBtn" style="display: none;">
+                <i class="fas fa-file-pdf"></i> Create PDF
+            </button>
+        </div>
+
+        <!-- Progress -->
+        <div id="imageToPdfProgress" class="progress-section" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="imageToPdfProgressFill"></div>
+            </div>
+            <p id="imageToPdfProgressText">Creating PDF...</p>
+        </div>
+
+        <!-- Result -->
+        <div id="imageToPdfResult" class="result-section" style="display: none;">
+            <div class="result-card success">
+                <i class="fas fa-check-circle"></i>
+                <h3>PDF Created Successfully!</h3>
+                <div class="result-stats">
+                    <div class="stat">
+                        <span>Images Converted:</span>
+                        <strong id="imageToPdfImageCount"></strong>
+                    </div>
+                    <div class="stat">
+                        <span>File Size:</span>
+                        <strong id="imageToPdfResultSize"></strong>
+                    </div>
+                </div>
+                <div class="result-actions">
+                    <button class="btn btn-primary" id="imageToPdfDownloadBtn">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                    <button class="btn btn-secondary" onclick="location.reload()">
+                        <i class="fas fa-redo"></i> Create More
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    if (document.querySelector('#imageToPdfFiles')) {
+        const uploadArea = document.getElementById('imageToPdfUploadArea');
+        const fileInput = document.getElementById('imageToPdfFiles');
+        const convertBtn = document.getElementById('imageToPdfBtn');
+        const filesList = document.getElementById('imageToPdfFilesList');
+        let selectedFiles = [];
+        let fileId = null;
+
+        uploadArea.addEventListener('click', (e) => {
+            if (!e.target.closest('.file-item')) {
+                fileInput.click();
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            addFiles(Array.from(e.target.files));
+        });
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        uploadArea.addEventListener('dragover', (e) => {
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            if (e.target === uploadArea) {
+                uploadArea.classList.remove('dragover');
+            }
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            uploadArea.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files).filter(f => 
+                f.type === 'image/png' || f.type === 'image/jpeg' || f.name.endsWith('.jpg') || f.name.endsWith('.jpeg') || f.name.endsWith('.png')
+            );
+            if (files.length > 0) {
+                addFiles(files);
+            } else {
+                showToast('Please drop image files (PNG, JPG)', 'error');
+            }
+        });
+
+        function addFiles(files) {
+            selectedFiles.push(...files);
+            updateFileList();
+            convertBtn.style.display = selectedFiles.length > 0 ? 'block' : 'none';
+        }
+
+        function updateFileList() {
+            filesList.innerHTML = '';
+            if (selectedFiles.length === 0) {
+                document.getElementById('imageToPdfFileCount').textContent = 'No files selected';
+                return;
+            }
+            
+            selectedFiles.forEach((file, index) => {
+                const li = document.createElement('li');
+                li.className = 'file-item';
+                li.innerHTML = `
+                    <span>${index + 1}. ${file.name}</span>
+                    <button onclick="event.preventDefault(); removeFile(${index})" class="btn-remove">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                filesList.appendChild(li);
+            });
+            
+            document.getElementById('imageToPdfFileCount').textContent = 
+                selectedFiles.length + ' images selected';
+        }
+
+        window.removeFile = function(index) {
+            selectedFiles.splice(index, 1);
+            updateFileList();
+            convertBtn.style.display = selectedFiles.length > 0 ? 'block' : 'none';
+        };
+
+        convertBtn.addEventListener('click', convertToPdf);
+
+        async function convertToPdf() {
+            if (selectedFiles.length === 0) {
+                showToast('Select at least one image', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('files', file);
+            });
+
+            document.getElementById('imageToPdfProgress').style.display = 'block';
+            convertBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/convert/image-to-pdf', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    fileId = data.file_id;
+                    showResult(data);
+                    saveToHistory('Image to PDF', selectedFiles.map(f => f.name).join(', '), 'converted_' + fileId + '.pdf');
+                } else {
+                    showToast('Conversion failed: ' + data.detail, 'error');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                document.getElementById('imageToPdfProgress').style.display = 'none';
+                convertBtn.disabled = false;
+            }
+        }
+
+        function showResult(data) {
+            document.getElementById('imageToPdfImageCount').textContent = data.image_count;
+            document.getElementById('imageToPdfResultSize').textContent = 
+                (data.output_size / 1024 / 1024).toFixed(2) + ' MB';
+            
+            document.getElementById('imageToPdfDownloadBtn').onclick = () => {
+                window.location.href = '/api/convert/download-pdf/' + fileId;
+            };
+
+            document.getElementById('imageToPdfResult').style.display = 'block';
+            document.getElementById('imageToPdfProgress').style.display = 'none';
+            convertBtn.style.display = 'none';
+        }
+    }
+})();
+</script>

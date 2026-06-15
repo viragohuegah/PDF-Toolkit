@@ -1,0 +1,209 @@
+<!-- Merge PDF Page -->
+<div class="feature-page">
+    <div class="page-header">
+        <h2>Merge PDFs</h2>
+        <p>Combine multiple PDF files into one</p>
+    </div>
+
+    <div class="page-content">
+        <div class="merge-container">
+            <div class="upload-section">
+                <div class="upload-area" id="mergeUploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Add PDF Files</h3>
+                    <p>Drag & drop or click to select</p>
+                    <p class="text-small">Select 2 or more PDFs</p>
+                </div>
+                <input type="file" id="mergeFiles" accept=".pdf" multiple style="display: none;">
+            </div>
+
+            <!-- File List -->
+            <div class="file-list-section">
+                <h3>Files to Merge</h3>
+                <ul id="mergeFilesList" class="file-list"></ul>
+                <p id="mergeFileCount" class="text-muted">No files selected</p>
+            </div>
+
+            <button class="btn btn-primary btn-large" id="mergeBtn" style="display: none;">
+                <i class="fas fa-object-group"></i> Merge PDFs
+            </button>
+        </div>
+
+        <!-- Progress -->
+        <div id="mergeProgress" class="progress-section" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="mergeProgressFill"></div>
+            </div>
+            <p id="mergeProgressText">Merging PDFs...</p>
+        </div>
+
+        <!-- Result -->
+        <div id="mergeResult" class="result-section" style="display: none;">
+            <div class="result-card success">
+                <i class="fas fa-check-circle"></i>
+                <h3>Files Merged Successfully!</h3>
+                <div class="result-stats">
+                    <div class="stat">
+                        <span>Files Merged:</span>
+                        <strong id="mergeFileCount"></strong>
+                    </div>
+                    <div class="stat">
+                        <span>Output Size:</span>
+                        <strong id="mergeOutputSize"></strong>
+                    </div>
+                </div>
+                <div class="result-actions">
+                    <button class="btn btn-primary" id="mergeDownloadBtn">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                    <button class="btn btn-secondary" onclick="location.reload()">
+                        <i class="fas fa-redo"></i> Merge More
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    if (document.querySelector('#mergeFiles')) {
+        const uploadArea = document.getElementById('mergeUploadArea');
+        const fileInput = document.getElementById('mergeFiles');
+        const mergeBtn = document.getElementById('mergeBtn');
+        const filesList = document.getElementById('mergeFilesList');
+        let selectedFiles = [];
+        let fileId = null;
+
+        uploadArea.addEventListener('click', (e) => {
+            if (!e.target.closest('.file-item')) {
+                fileInput.click();
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            addFiles(Array.from(e.target.files));
+        });
+
+        // Drag and drop events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        uploadArea.addEventListener('dragover', (e) => {
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            if (e.target === uploadArea) {
+                uploadArea.classList.remove('dragover');
+            }
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            uploadArea.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files).filter(f => 
+                f.type === 'application/pdf' || f.name.endsWith('.pdf')
+            );
+            if (files.length > 0) {
+                addFiles(files);
+            } else {
+                showToast('Please drop PDF files', 'error');
+            }
+        });
+
+        function addFiles(files) {
+            selectedFiles = [...selectedFiles, ...files];
+            updateFileList();
+            mergeBtn.style.display = selectedFiles.length >= 2 ? 'block' : 'none';
+        }
+
+        function updateFileList() {
+            filesList.innerHTML = '';
+            if (selectedFiles.length === 0) {
+                document.getElementById('mergeFileCount').textContent = 'No files selected';
+                return;
+            }
+            
+            selectedFiles.forEach((file, index) => {
+                const li = document.createElement('li');
+                li.className = 'file-item';
+                li.innerHTML = `
+                    <span>${index + 1}. ${file.name}</span>
+                    <button onclick="event.preventDefault(); removeFile(${index})" class="btn-remove">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                filesList.appendChild(li);
+            });
+            
+            document.getElementById('mergeFileCount').textContent = 
+                selectedFiles.length + ' files selected';
+        }
+
+        window.removeFile = function(index) {
+            selectedFiles.splice(index, 1);
+            updateFileList();
+            mergeBtn.style.display = selectedFiles.length >= 2 ? 'block' : 'none';
+        };
+
+        mergeBtn.addEventListener('click', mergePDFs);
+
+        async function mergePDFs() {
+            if (selectedFiles.length < 2) {
+                showToast('Select at least 2 PDF files', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('files', file);
+            });
+
+            document.getElementById('mergeProgress').style.display = 'block';
+            mergeBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/merge/merge-pdfs', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    fileId = data.file_id;
+                    showResult(data);
+                    saveToHistory('Merge', selectedFiles.map(f => f.name).join(', '), 'merged_' + fileId + '.pdf');
+                } else {
+                    showToast('Merge failed: ' + data.detail, 'error');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                document.getElementById('mergeProgress').style.display = 'none';
+                mergeBtn.disabled = false;
+            }
+        }
+
+        function showResult(data) {
+            document.getElementById('mergeFileCount').textContent = data.file_count;
+            document.getElementById('mergeOutputSize').textContent = 
+                (data.output_size / 1024 / 1024).toFixed(2) + ' MB';
+            
+            document.getElementById('mergeDownloadBtn').onclick = () => {
+                window.location.href = '/api/merge/download/' + fileId;
+            };
+
+            document.getElementById('mergeResult').style.display = 'block';
+            document.getElementById('mergeProgress').style.display = 'none';
+            mergeBtn.style.display = 'none';
+        }
+    }
+})();
+</script>

@@ -1,0 +1,234 @@
+<!-- PDF to Image Page -->
+<div class="feature-page">
+    <div class="page-header">
+        <h2>PDF to Image</h2>
+        <p>Convert PDF pages to PNG or JPG images</p>
+    </div>
+
+    <div class="page-content">
+        <div class="two-column">
+            <!-- Upload Area -->
+            <div class="upload-section">
+                <div class="upload-area" id="pdfToImageUploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Upload PDF</h3>
+                    <p>or click to select file</p>
+                </div>
+                <input type="file" id="pdfToImageFile" accept=".pdf" style="display: none;">
+            </div>
+
+            <!-- Settings -->
+            <div class="settings-section">
+                <h3>Conversion Settings</h3>
+                
+                <div class="preview-section" id="pdfToImagePreview" style="display: none;">
+                    <img id="pdfToImagePreviewImg" src="" alt="PDF Preview">
+                    <div class="file-info">
+                        <p id="pdfToImageFileName"></p>
+                        <p id="pdfToImageFileSize"></p>
+                    </div>
+                </div>
+
+                <div id="pdfToImageSettings" style="display: none;">
+                    <div class="form-group">
+                        <label>Image Format</label>
+                        <select id="pdfToImageFormat">
+                            <option value="png" selected>PNG</option>
+                            <option value="jpg">JPG</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>DPI (Quality)</label>
+                        <select id="pdfToImageDpi">
+                            <option value="100">100 DPI (Low)</option>
+                            <option value="150" selected>150 DPI (Medium)</option>
+                            <option value="200">200 DPI (High)</option>
+                            <option value="300">300 DPI (Very High)</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-primary btn-large" id="pdfToImageBtn">
+                        <i class="fas fa-images"></i> Convert to Images
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress -->
+        <div id="pdfToImageProgress" class="progress-section" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="pdfToImageProgressFill"></div>
+            </div>
+            <p id="pdfToImageProgressText">Converting PDF...</p>
+        </div>
+
+        <!-- Result -->
+        <div id="pdfToImageResult" class="result-section" style="display: none;">
+            <div class="result-card success">
+                <i class="fas fa-check-circle"></i>
+                <h3>Conversion Successful!</h3>
+                <div class="result-stats">
+                    <div class="stat">
+                        <span>Pages Converted:</span>
+                        <strong id="pdfToImagePageCount"></strong>
+                    </div>
+                    <div class="stat">
+                        <span>Format:</span>
+                        <strong id="pdfToImageResultFormat"></strong>
+                    </div>
+                </div>
+                <div class="result-actions">
+                    <button class="btn btn-primary" id="pdfToImageDownloadBtn">
+                        <i class="fas fa-download"></i> Download ZIP
+                    </button>
+                    <button class="btn btn-secondary" onclick="location.reload()">
+                        <i class="fas fa-redo"></i> Convert More
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    if (document.querySelector('#pdfToImageFile')) {
+        const uploadArea = document.getElementById('pdfToImageUploadArea');
+        const fileInput = document.getElementById('pdfToImageFile');
+        const convertBtn = document.getElementById('pdfToImageBtn');
+        const formatSelect = document.getElementById('pdfToImageFormat');
+        const dpiSelect = document.getElementById('pdfToImageDpi');
+        let selectedFile = null;
+        let fileId = null;
+
+        uploadArea.addEventListener('click', (e) => {
+            if (!e.target.closest('.preview-section')) {
+                fileInput.click();
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                    selectedFile = file;
+                    showPreview(selectedFile);
+                } else {
+                    showToast('Please select a PDF file', 'error');
+                    fileInput.value = '';
+                }
+            }
+        });
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        uploadArea.addEventListener('dragover', (e) => {
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            if (e.target === uploadArea) {
+                uploadArea.classList.remove('dragover');
+            }
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                    selectedFile = file;
+                    showPreview(selectedFile);
+                } else {
+                    showToast('Please drop a PDF file', 'error');
+                }
+            }
+        });
+
+        async function showPreview(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/preview/thumbnail', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.status === 'success') {
+                    document.getElementById('pdfToImagePreviewImg').src = data.thumbnail;
+                    document.getElementById('pdfToImageFileName').textContent = file.name;
+                    document.getElementById('pdfToImageFileSize').textContent = 
+                        'Size: ' + (file.size / 1024 / 1024).toFixed(2) + ' MB';
+                    document.getElementById('pdfToImagePreview').style.display = 'block';
+                    document.getElementById('pdfToImageSettings').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading preview:', error);
+            }
+        }
+
+        convertBtn.addEventListener('click', convertToImages);
+
+        async function convertToImages() {
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('format', formatSelect.value);
+            formData.append('dpi', dpiSelect.value);
+
+            document.getElementById('pdfToImageProgress').style.display = 'block';
+            convertBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/convert/pdf-to-image', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    fileId = data.file_id;
+                    showResult(data);
+                    saveToHistory('PDF to Image', selectedFile.name, 'images_' + fileId + '.zip');
+                } else {
+                    showToast('Conversion failed: ' + data.detail, 'error');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                document.getElementById('pdfToImageProgress').style.display = 'none';
+                convertBtn.disabled = false;
+            }
+        }
+
+        function showResult(data) {
+            document.getElementById('pdfToImagePageCount').textContent = 
+                data.page_count + ' pages';
+            document.getElementById('pdfToImageResultFormat').textContent = 
+                data.format.toUpperCase();
+            
+            document.getElementById('pdfToImageDownloadBtn').onclick = () => {
+                window.location.href = '/api/convert/download-image/' + fileId;
+            };
+
+            document.getElementById('pdfToImageResult').style.display = 'block';
+            document.getElementById('pdfToImageProgress').style.display = 'none';
+            document.getElementById('pdfToImageSettings').style.display = 'none';
+            document.getElementById('pdfToImagePreview').style.display = 'none';
+        }
+    }
+})();
+</script>

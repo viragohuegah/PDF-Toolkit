@@ -1,0 +1,229 @@
+<!-- Protect PDF Page -->
+<div class="feature-page">
+    <div class="page-header">
+        <h2>Protect PDF</h2>
+        <p>Add password protection to your PDF</p>
+    </div>
+
+    <div class="page-content">
+        <div class="two-column">
+            <!-- Upload Area -->
+            <div class="upload-section">
+                <div class="upload-area" id="protectUploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <h3>Upload PDF</h3>
+                    <p>or click to select file</p>
+                </div>
+                <input type="file" id="protectFile" accept=".pdf" style="display: none;">
+            </div>
+
+            <!-- Settings -->
+            <div class="settings-section">
+                <h3>Set Password</h3>
+                
+                <div class="preview-section" id="protectPreview" style="display: none;">
+                    <img id="protectPreviewImg" src="" alt="PDF Preview">
+                    <div class="file-info">
+                        <p id="protectFileName"></p>
+                    </div>
+                </div>
+
+                <div id="protectSettings" style="display: none;">
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="protectPassword" placeholder="Enter password" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="protectPasswordConfirm" placeholder="Confirm password" required>
+                    </div>
+
+                    <p class="text-info">
+                        <i class="fas fa-info-circle"></i>
+                        Minimum 4 characters required
+                    </p>
+
+                    <button class="btn btn-primary btn-large" id="protectBtn">
+                        <i class="fas fa-lock"></i> Protect PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress -->
+        <div id="protectProgress" class="progress-section" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="protectProgressFill"></div>
+            </div>
+            <p>Protecting PDF...</p>
+        </div>
+
+        <!-- Result -->
+        <div id="protectResult" class="result-section" style="display: none;">
+            <div class="result-card success">
+                <i class="fas fa-check-circle"></i>
+                <h3>PDF Protected Successfully!</h3>
+                <p>Your PDF is now password protected</p>
+                <div class="result-actions">
+                    <button class="btn btn-primary" id="protectDownloadBtn">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                    <button class="btn btn-secondary" onclick="location.reload()">
+                        <i class="fas fa-redo"></i> Protect More
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    if (document.querySelector('#protectFile')) {
+        const uploadArea = document.getElementById('protectUploadArea');
+        const fileInput = document.getElementById('protectFile');
+        const protectBtn = document.getElementById('protectBtn');
+        const passwordInput = document.getElementById('protectPassword');
+        const passwordConfirmInput = document.getElementById('protectPasswordConfirm');
+        let selectedFile = null;
+        let fileId = null;
+
+        // File selection via click
+        uploadArea.addEventListener('click', (e) => {
+            if (!e.target.closest('.preview-section')) {
+                fileInput.click();
+            }
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                    selectedFile = file;
+                    showPreview(selectedFile);
+                } else {
+                    showToast('Please select a PDF file', 'error');
+                    fileInput.value = '';
+                }
+            }
+        });
+
+        // Drag and drop events
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        uploadArea.addEventListener('dragover', (e) => {
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            if (e.target === uploadArea) {
+                uploadArea.classList.remove('dragover');
+            }
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                    selectedFile = file;
+                    showPreview(selectedFile);
+                } else {
+                    showToast('Please drop a PDF file', 'error');
+                }
+            }
+        });
+
+        async function showPreview(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/preview/thumbnail', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.status === 'success') {
+                    document.getElementById('protectPreviewImg').src = data.thumbnail;
+                    document.getElementById('protectFileName').textContent = file.name;
+                    document.getElementById('protectPreview').style.display = 'block';
+                    document.getElementById('protectSettings').style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Error loading preview:', error);
+                showToast('Could not load preview', 'error');
+            }
+        }
+
+        protectBtn.addEventListener('click', protectPDF);
+
+        async function protectPDF() {
+            if (!selectedFile) return;
+
+            const password = passwordInput.value;
+            const passwordConfirm = passwordConfirmInput.value;
+
+            if (password.length < 4) {
+                showToast('Password must be at least 4 characters', 'error');
+                return;
+            }
+
+            if (password !== passwordConfirm) {
+                showToast('Passwords do not match', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('password', password);
+
+            document.getElementById('protectProgress').style.display = 'block';
+            protectBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/security/protect-pdf', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    fileId = data.file_id;
+                    showResult();
+                    saveToHistory('Protect', selectedFile.name, 'protected_' + fileId + '.pdf');
+                } else {
+                    showToast('Protection failed: ' + data.detail, 'error');
+                }
+            } catch (error) {
+                showToast('Error: ' + error.message, 'error');
+            } finally {
+                document.getElementById('protectProgress').style.display = 'none';
+                protectBtn.disabled = false;
+            }
+        }
+
+        function showResult() {
+            document.getElementById('protectDownloadBtn').onclick = () => {
+                window.location.href = '/api/security/download/' + fileId + '/protected';
+            };
+
+            document.getElementById('protectResult').style.display = 'block';
+            document.getElementById('protectProgress').style.display = 'none';
+            document.getElementById('protectSettings').style.display = 'none';
+            document.getElementById('protectPreview').style.display = 'none';
+        }
+    }
+})();
+</script>
