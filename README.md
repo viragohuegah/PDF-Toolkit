@@ -48,6 +48,10 @@ Resolution options:
 
 Convert multiple JPG, JPEG, and PNG images into a single PDF document.
 
+### PDF to Word
+
+Extract text content from PDF files to Word document.
+
 ### PDF to Text
 
 Extract text content from PDF files for editing, searching, or analysis.
@@ -75,9 +79,6 @@ Options include:
 - Center Placement
 - Multiple Color Choices
 
-### Preview Mode
-
-Generate document previews before downloading.
 
 ### Download History
 
